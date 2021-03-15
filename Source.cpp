@@ -10,6 +10,7 @@
 #include <glm/gtc/type_ptr.hpp>
 #include "Shader1.h"
 #include "Camera.h"
+#include <map>
 
 
 // Function prototypes
@@ -29,12 +30,12 @@ GLfloat lastY = HEIGHT / 2.0;
 bool    keys[1024];
 glm::vec3 lightPos1(0.0f, 3.0f, 0.0f);
 glm::vec3 lightPos2(3.5f, 3.0f, 2.5f);
-GLfloat deltaTime = 0.0f;	
-GLfloat lastFrame = 0.0f;  	
+GLfloat deltaTime = 0.0f;
+GLfloat lastFrame = 0.0f;
 
 int main()
 {
-    
+
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
@@ -50,17 +51,19 @@ int main()
     glewInit();
     glViewport(0, 0, WIDTH, HEIGHT);
     glEnable(GL_DEPTH_TEST);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 
     // Shaders
-    std::string path1 = "C:\\Denis\\dp\\dp_project\\Project1\\";
-    Shader lightingShader(path1 + "lighting.vs", path1 + "lighting.fs");
-    Shader lampShader(path1 + "lamp.vs", path1 + "lamp.fs");
-    Shader texsh(path1 + "texsh.vs", path1 + "texsh.fs");
-    Shader skyboxShader(path1 + "skybox.vs", path1 + "skybox.fs");
-    Shader cubeShader(path1 + "cubesh.vs", path1 + "cubesh.fs");
-    Shader Normalmap(path1 + "NormalMapping.vs", path1 + "NormalMapping.fs");
-    Shader Parallax(path1 + "Parallax.vs", path1 + "Parallax.fs");
+    Shader lightingShader("lighting.vs", "lighting.fs");
+    Shader lampShader("lamp.vs", "lamp.fs");
+    Shader texsh("texsh.vs", "texsh.fs");
+    Shader skyboxShader("skybox.vs", "skybox.fs");
+    Shader cubeShader("cubesh.vs", "cubesh.fs");
+    Shader Normalmap("NormalMapping.vs", "NormalMapping.fs");
+    Shader Parallax("Parallax.vs", "Parallax.fs");
+    Shader windowS("window.vs", "window.fs");
 
 
     //vertex data
@@ -151,7 +154,7 @@ int main()
         -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f
     };
     float texcube[] = {
-                            
+
         -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  0.0f,  0.0f,
          0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  1.0f,  0.0f,
          0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  1.0f,  1.0f,
@@ -203,7 +206,7 @@ int main()
         -10.0f, -0.5f, -20.0f,  0.0f, 1.0f, 0.0f,   0.0f,  10.0f,
          10.0f, -0.5f, -20.0f,  0.0f, 1.0f, 0.0f,   10.0f,  10.0f
     };
-    float skyboxVertices[] = {     
+    float skyboxVertices[] = {
         -1.0f,  1.0f, -1.0f,
         -1.0f, -1.0f, -1.0f,
          1.0f, -1.0f, -1.0f,
@@ -246,9 +249,8 @@ int main()
         -1.0f, -1.0f,  1.0f,
          1.0f, -1.0f,  1.0f
     };
-
     float cubeVertices[] = {
-              
+
         1.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
          2.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
          2.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
@@ -290,6 +292,22 @@ int main()
          2.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
         1.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
         1.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f
+    };
+    float transparentVertices[] = {
+
+        0.0f,  0.5f,  0.0f,  0.0f,  0.0f,
+        0.0f, -0.5f,  0.0f,  0.0f,  1.0f,
+        1.0f, -0.5f,  0.0f,  1.0f,  1.0f,
+
+        0.0f,  0.5f,  0.0f,  0.0f,  0.0f,
+        1.0f, -0.5f,  0.0f,  1.0f,  1.0f,
+        1.0f,  0.5f,  0.0f,  1.0f,  0.0f
+    };
+    std::vector<glm::vec3> windows
+    {
+        glm::vec3(-0.5f, 0.0f, 0.52f),
+        glm::vec3(1.0f, 0.0f, 5.0f),
+        glm::vec3(1.0f, 0.0f, 6.0f)
     };
 
     //bigwall
@@ -370,24 +388,40 @@ int main()
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
 
+    //window
+    unsigned int transparentVAO, transparentVBO;
+    glGenVertexArrays(1, &transparentVAO);
+    glGenBuffers(1, &transparentVBO);
+    glBindVertexArray(transparentVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, transparentVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(transparentVertices), transparentVertices, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+    glBindVertexArray(0);
+
+
+
     //skybox textures
     std::vector<std::string> faces
     {
-        "C:\\Denis\\dp\\dp_project\\Project1\\right.jpg",
-        "C:\\Denis\\dp\\dp_project\\Project1\\left.jpg",
-        "C:\\Denis\\dp\\dp_project\\Project1\\top.jpg",
-        "C:\\Denis\\dp\\dp_project\\Project1\\bottom.jpg",
-        "C:\\Denis\\dp\\dp_project\\Project1\\front.jpg",
-        "C:\\Denis\\dp\\dp_project\\Project1\\back.jpg",
+        "right.jpg",
+        "left.jpg",
+        "top.jpg",
+        "bottom.jpg",
+        "front.jpg",
+        "back.jpg",
     };
-    
+
     //textures
     unsigned int cubemapTexture = loadCubemap(faces);
-    unsigned int diffuseMap = loadTexture("C:\\Denis\\dp\\dp_project\\Project1\\container2.png");
-    unsigned int floor = loadTexture("C:\\Denis\\dp\\dp_project\\Project1\\floor.png");
-    unsigned int diffuseMap2 = loadTexture("C:\\Denis\\dp\\dp_project\\Project1\\brickwall_diff.png");
-    unsigned int normalMap2 = loadTexture("C:\\Denis\\dp\\dp_project\\Project1\\brickwall_normal.png");
-    unsigned int highMap3 = loadTexture("C:\\Denis\\dp\\dp_project\\Project1\\brickwall_high.png");
+    unsigned int diffuseMap = loadTexture("container2.png");
+    unsigned int floor = loadTexture("floor.png");
+    unsigned int diffuseMap2 = loadTexture("brickwall_diff.png");
+    unsigned int normalMap2 = loadTexture("brickwall_normal.png");
+    unsigned int highMap3 = loadTexture("brickwall_high.png");
+    unsigned int windowTex = loadTexture("window.png");
 
     //activating shaders
     texsh.Use();
@@ -403,6 +437,9 @@ int main()
     Parallax.setInt("diffuseMap", 0);
     Parallax.setInt("normalMap", 1);
     Parallax.setInt("depthMap", 2);
+    windowS.Use();
+    windowS.setInt("windowTex", 0);
+
     //game loop
     while (!glfwWindowShouldClose(window))
     {
@@ -487,7 +524,7 @@ int main()
         glBindTexture(GL_TEXTURE_2D, diffuseMap);
         glBindVertexArray(texcubeVAO);
         glDrawArrays(GL_TRIANGLES, 0, 36);
-        //-----------------------------------------
+
 
         //floor-----------------------------------
         model = glm::mat4(1.0f);
@@ -567,9 +604,9 @@ int main()
 
 
         //skybox effect------------------------------------
-        glDepthFunc(GL_LEQUAL);  
+        glDepthFunc(GL_LEQUAL);
         skyboxShader.Use();
-        view = glm::mat4(glm::mat3(camera.GetViewMatrix())); 
+        view = glm::mat4(glm::mat3(camera.GetViewMatrix()));
         skyboxShader.setMat4("view", view);
         skyboxShader.setMat4("projection", projection);
         glBindVertexArray(skyboxVAO);
@@ -577,10 +614,35 @@ int main()
         glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
         glDrawArrays(GL_TRIANGLES, 0, 36);
         glBindVertexArray(0);
-        glDepthFunc(GL_LESS); 
+        glDepthFunc(GL_LESS);
         glBindVertexArray(lampVAO);
         glDrawArrays(GL_TRIANGLES, 0, 36);
         //------------------------------------------------
+
+        //billboards-----------------------
+        std::multimap<float, glm::vec3> sortedWindows;
+        for (unsigned int i = 0; i < windows.size(); i++)
+        {
+            float distance = glm::length(camera.Position - windows[i]);
+            sortedWindows.insert(std::make_pair(distance, windows[i]));
+
+        }
+        windowS.Use();
+        glBindVertexArray(transparentVAO);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, windowTex);
+        view = camera.GetViewMatrix();
+        windowS.setMat4("view", view);
+        windowS.setMat4("projection", projection);
+        for (std::map<float, glm::vec3>::reverse_iterator it = sortedWindows.rbegin(); it != sortedWindows.rend(); ++it)
+        {
+            model = glm::mat4(1.0f);
+            model = glm::translate(model, it->second);
+            windowS.setMat4("model", model);
+            glDrawArrays(GL_TRIANGLES, 0, 6);
+
+        }
+        glBindVertexArray(0);
         glfwSwapBuffers(window);
     }
     glfwTerminate();
