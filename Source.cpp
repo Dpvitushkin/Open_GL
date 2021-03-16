@@ -418,11 +418,12 @@ int main()
     unsigned int cubemapTexture = loadCubemap(faces);
     unsigned int diffuseMap = loadTexture("container2.png");
     unsigned int floor = loadTexture("floor.png");
-    unsigned int diffuseMap2 = loadTexture("brickwall_diff.png");
-    unsigned int normalMap2 = loadTexture("brickwall_normal.png");
-    unsigned int highMap3 = loadTexture("brickwall_high.png");
+    unsigned int NM_dif = loadTexture("NM_dif.png");
+    unsigned int NM_norm = loadTexture("NM_norm.png");
+    unsigned int PM_high = loadTexture("PM_high.png");
     unsigned int windowTex = loadTexture("window.png");
-
+    unsigned int PM_dif = loadTexture("PM_dif.png");
+    unsigned int PM_norm = loadTexture("PM_norm.png");
     //activating shaders
     texsh.Use();
     texsh.setInt("material.diffuse", 0);
